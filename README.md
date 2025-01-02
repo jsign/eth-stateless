@@ -2,7 +2,7 @@
 
 A toolbox for various Ethereum stateless tasks, such as:
 
-- Merkle Patricia Trie preimage exporter.
+- Merkle Patricia Trie preimages exporter.
 
 ## Project Structure
 
@@ -12,7 +12,7 @@ A toolbox for various Ethereum stateless tasks, such as:
 
 - Rust toolchain (stable)
 - Cargo
-- `--datadir` folder of a synced Reth node
+- `--datadir` folder of a synced full-node Reth (i.e: archive node _not_ required)
 
 ## Run
 
@@ -43,8 +43,9 @@ Options:
 
 Example:
 
-```bash
-cargo run -p preimages --release -- --datadir=/somewhere/reth/reth_data generate
+```text
+$ cargo run -p preimages --release -- --datadir=<reth datadir path> generate
+#####>-------------------------------------------- 10% [eta: 32m] 0x19eaf81a0c1215b7e50524f42594d9496e0ec640
 ```
 
 ## LICENSE
