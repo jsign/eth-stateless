@@ -1,5 +1,7 @@
 [workspace]
-members = []
+members = ["preimages"]
 resolver = "2"
 
 [workspace.dependencies]
+reth-db = { git = "https://github.com/paradigmxyz/reth.git", rev = "c0a8a7b" }
+anyhow = "1.0.40"
