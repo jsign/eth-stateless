@@ -36,7 +36,7 @@ impl MptDfsIterator {
 
 pub enum MptDfsItem {
     Account(Address),
-    StorageSlot(Address, B256),
+    StorageSlot(B256),
 }
 
 impl Iterator for MptDfsIterator {
@@ -61,7 +61,7 @@ impl Iterator for MptDfsIterator {
                 if let Some((addr, key)) = self.buf_storage_slot {
                     if addr == *address {
                         self.buf_storage_slot = None;
-                        return Some(MptDfsItem::StorageSlot(addr, key));
+                        return Some(MptDfsItem::StorageSlot(key));
                     } else {
                         self.state = State::Account;
                         return self.next();

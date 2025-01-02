@@ -72,7 +72,7 @@ fn generate(tx: Tx<RO>, path: &str) -> Result<()> {
                     .write_all(address.as_slice())
                     .context("writing address preimage")?;
             }
-            MptDfsItem::StorageSlot(_, key) => {
+            MptDfsItem::StorageSlot(key) => {
                 writer
                     .write_all(key.as_slice())
                     .context("writing storage slot preimage")?;
