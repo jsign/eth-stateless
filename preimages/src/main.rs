@@ -7,9 +7,11 @@ use std::{
 use anyhow::{Context, Result};
 use clap::{command, Parser};
 use mptdfs::{MptDfsItem, MptDfsIterator};
+use progress::PreimagesProgressBar;
 use reth_db::mdbx::{tx::Tx, DatabaseArguments, RO};
 
 mod mptdfs;
+mod progress;
 
 #[derive(Parser)]
 #[command(name = "report")]
@@ -59,10 +61,13 @@ fn main() -> Result<()> {
 fn generate(tx: Tx<RO>, path: &str) -> Result<()> {
     let mut f = File::create(path)?;
     let mut writer = BufWriter::new(&mut f);
+
+    let mut pb = PreimagesProgressBar::new()?;
     let it = MptDfsIterator::new(tx)?;
     for entry in it {
         match entry {
             MptDfsItem::Account(address) => {
+                pb.progress(address);
                 writer
                     .write_all(address.as_slice())
                     .context("writing address preimage")?;
