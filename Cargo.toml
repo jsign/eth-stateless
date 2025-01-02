@@ -4,4 +4,6 @@ resolver = "2"
 
 [workspace.dependencies]
 reth-db = { git = "https://github.com/paradigmxyz/reth.git", rev = "c0a8a7b" }
+reth-db-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "c0a8a7b" }
+alloy-primitives = "0.8.15"
 anyhow = "1.0.40"
