@@ -70,14 +70,17 @@ fn main() -> Result<()> {
         } => {
             if iterator.plain {
                 println!("[1/1] Generating preimage file...");
-                generate(&path, PlainIterator::new(tx)?)?;
+                generate(
+                    &path,
+                    PlainIterator::new(tx)?,
+                    AddressProgressBar::new(false),
+                )?;
             } else {
                 println!("[1/2] Ordering account addresses by hash...");
-                let mut pb = AddressProgressBar::new();
-                let it = Eip4762Iterator::new(tx, |addr| pb.progress(addr))?;
-                pb.finish();
+                let mut pb = AddressProgressBar::new(false);
+                let it = Eip4762Iterator::new(tx, Some(|addr| pb.progress(addr)))?;
                 println!("[2/2] Generating preimage file...");
-                generate(&path, it)?;
+                generate(&path, it, AddressProgressBar::new(true))?;
             }
         }
     }
@@ -85,11 +88,10 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn generate(path: &str, it: impl PreimageIterator) -> Result<()> {
+fn generate(path: &str, it: impl PreimageIterator, mut pb: AddressProgressBar) -> Result<()> {
     let mut f = File::create(path)?;
     let mut writer = BufWriter::new(&mut f);
 
-    let mut pb = AddressProgressBar::new();
     for entry in it {
         match entry {
             Ok(AccountStorageItem::Account(address)) => {

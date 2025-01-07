@@ -1,3 +1,14 @@
+//! Implementation of the plain preimage access sequence iterator.
+//!
+//! This module provides an account and storage slot iterator respecting the plain ordering in the database.
+//! The ordering can be summarized as:
+//! 1. Iterate the account sorted by address.
+//! 2. For each account, iterate over the sorted storage slots.
+//!
+//! No actual sorting is required since both addresses and storage slots are naturally sorted in the db.
+//!
+//! Sample output: [account1, account1_ss0, account1_ss1, account2, account3, account3_ss0, ...]
+
 use alloy_primitives::{Address, B256};
 use anyhow::Result;
 use reth_db::mdbx::cursor::Cursor;

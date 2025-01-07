@@ -1,3 +1,14 @@
+//! Implementation of the EIP-4762 preimage access sequence iterator.
+//!
+//! This module provides an account and storage slot iterator respecting the order defined in EIP-4762.
+//! The ordering can be summarized as:
+//! 1. DFS the state tree, until an account is reached.
+//! 2. For each account, iterate over its state trie also in DFS order.
+//!
+//! In summary, the ordering is based by account and storage slot _hash_ (i.e keccak256).
+//!
+//! Sample output: [hash(account1), hash(account1_ss0), hash(account1_ss1), hash(account2), hash(account3), hash(account3_ss0), ...]
+
 use alloy_primitives::{keccak256, Address, B256};
 use anyhow::Result;
 use rayon::slice::ParallelSliceMut;
@@ -29,7 +40,7 @@ enum State {
 impl PreimageIterator for Eip4762Iterator {}
 
 impl Eip4762Iterator {
-    pub fn new<P>(tx: Tx<RO>, mut progress: P) -> Result<Self>
+    pub fn new<P>(tx: Tx<RO>, mut progress: Option<P>) -> Result<Self>
     where
         P: FnMut(Address),
     {
@@ -37,7 +48,9 @@ impl Eip4762Iterator {
         let mut cursor_accounts = tx.cursor_read::<PlainAccountState>()?;
         while let Some((address, _)) = cursor_accounts.next()? {
             addresses.push((address, keccak256(address)));
-            progress(address);
+            if let Some(ref mut progress) = progress {
+                progress(address);
+            }
         }
         addresses.par_sort_by_key(|addr| addr.1);
 
