@@ -7,6 +7,8 @@ use reth_db::{mdbx::tx::Tx, PlainAccountState, PlainStorageState};
 use reth_db_api::cursor::DbCursorRO;
 use reth_db_api::transaction::DbTx;
 
+use super::{AccountStorageItem, PreimageIterator};
+
 pub struct Eip4762Iterator {
     state: State,
 
@@ -24,15 +26,14 @@ enum State {
     End,
 }
 
+impl PreimageIterator for Eip4762Iterator {}
+
 impl Eip4762Iterator {
     pub fn new(tx: Tx<RO>) -> Result<Self> {
         let mut addresses = Vec::with_capacity(300_000_000);
         let mut cursor_accounts = tx.cursor_read::<PlainAccountState>()?;
         while let Some((address, _)) = cursor_accounts.next()? {
             addresses.push((address, keccak256(address)));
-            if addresses.len() % 1_000_000 == 0 {
-                println!("{} accounts loaded", addresses.len());
-            }
         }
         addresses.par_sort_by_key(|addr| addr.1);
 
@@ -45,11 +46,6 @@ impl Eip4762Iterator {
             buf_storage_slot_idx: 0,
         })
     }
-}
-
-pub enum AccountStorageItem {
-    Account(Address),
-    StorageSlot(B256),
 }
 
 impl Iterator for Eip4762Iterator {

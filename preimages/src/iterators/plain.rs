@@ -6,6 +6,8 @@ use reth_db::{mdbx::tx::Tx, PlainAccountState, PlainStorageState};
 use reth_db_api::cursor::DbCursorRO;
 use reth_db_api::transaction::DbTx;
 
+use super::{AccountStorageItem, PreimageIterator};
+
 pub struct PlainIterator {
     cursor_accounts: Cursor<RO, PlainAccountState>,
     cursor_storage_slots: Cursor<RO, PlainStorageState>,
@@ -34,10 +36,7 @@ impl PlainIterator {
     }
 }
 
-pub enum AccountStorageItem {
-    Account(Address),
-    StorageSlot(B256),
-}
+impl PreimageIterator for PlainIterator {}
 
 impl Iterator for PlainIterator {
     type Item = Result<AccountStorageItem>;

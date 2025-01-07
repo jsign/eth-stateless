@@ -1,8 +1,10 @@
 use anyhow::{Context, Result};
-use clap::{command, Parser};
-use iterators::plain::{AccountStorageItem, PlainIterator};
+use clap::{command, Args, Parser};
+use iterators::{
+    eip4762::Eip4762Iterator, plain::PlainIterator, AccountStorageItem, PreimageIterator,
+};
 use progress::PreimagesProgressBar;
-use reth_db::mdbx::{tx::Tx, DatabaseArguments, RO};
+use reth_db::mdbx::{tx::Tx, DatabaseArguments};
 use std::{
     fs::File,
     io::{BufWriter, Write},
@@ -27,13 +29,24 @@ enum SubCommand {
     #[command(name = "generate", about = "Generate preimage file")]
     Generate {
         #[arg(
-            short = 'o',
             long = "output-path",
             help = "Preimages file output path",
             default_value = "preimages.bin"
         )]
         path: String,
+
+        #[command(flatten)]
+        order: OrderArgs,
     },
+}
+
+#[derive(Args)]
+#[group(required = true, multiple = false)]
+struct OrderArgs {
+    #[arg(long, help = "Use plain ordering")]
+    plain: bool,
+    #[arg(long, help = "Use EIP-4762 ordering (i.e: hashed)")]
+    eip4762: bool,
 }
 
 fn main() -> Result<()> {
@@ -51,18 +64,26 @@ fn main() -> Result<()> {
     let tx = Tx::new(tx);
 
     match cli.subcmd {
-        SubCommand::Generate { path } => generate(tx, &path)?,
+        SubCommand::Generate {
+            path,
+            order: iterator,
+        } => {
+            if iterator.plain {
+                generate(&path, PlainIterator::new(tx)?)?;
+            } else {
+                generate(&path, Eip4762Iterator::new(tx)?)?;
+            }
+        }
     }
 
     Ok(())
 }
 
-fn generate(tx: Tx<RO>, path: &str) -> Result<()> {
+fn generate(path: &str, it: impl PreimageIterator) -> Result<()> {
     let mut f = File::create(path)?;
     let mut writer = BufWriter::new(&mut f);
 
     let mut pb = PreimagesProgressBar::new()?;
-    let it = PlainIterator::new(tx)?;
     for entry in it {
         match entry {
             Ok(AccountStorageItem::Account(address)) => {
