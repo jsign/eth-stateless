@@ -4,13 +4,13 @@ use std::{
     path::Path,
 };
 
+use accountstorageiterator::{AccountStorageItem, AccountStorageIterator};
 use anyhow::{Context, Result};
 use clap::{command, Parser};
-use mptdfs::{MptDfsItem, MptDfsIterator};
 use progress::PreimagesProgressBar;
 use reth_db::mdbx::{tx::Tx, DatabaseArguments, RO};
 
-mod mptdfs;
+mod accountstorageiterator;
 mod progress;
 
 #[derive(Parser)]
@@ -63,20 +63,21 @@ fn generate(tx: Tx<RO>, path: &str) -> Result<()> {
     let mut writer = BufWriter::new(&mut f);
 
     let mut pb = PreimagesProgressBar::new()?;
-    let it = MptDfsIterator::new(tx)?;
+    let it = AccountStorageIterator::new(tx)?;
     for entry in it {
         match entry {
-            MptDfsItem::Account(address) => {
+            Ok(AccountStorageItem::Account(address)) => {
                 pb.progress(address);
                 writer
                     .write_all(address.as_slice())
                     .context("writing address preimage")?;
             }
-            MptDfsItem::StorageSlot(key) => {
+            Ok(AccountStorageItem::StorageSlot(ss)) => {
                 writer
-                    .write_all(key.as_slice())
+                    .write_all(ss.as_slice())
                     .context("writing storage slot preimage")?;
             }
+            Err(e) => return Err(e),
         }
     }
     Ok(())
