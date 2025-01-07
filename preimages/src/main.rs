@@ -1,6 +1,6 @@
 use anyhow::{Context, Result};
 use clap::{command, Parser};
-use iterators::unhashed::{AccountStorageItem, UnhashedIterator};
+use iterators::plain::{AccountStorageItem, PlainIterator};
 use progress::PreimagesProgressBar;
 use reth_db::mdbx::{tx::Tx, DatabaseArguments, RO};
 use std::{
@@ -62,7 +62,7 @@ fn generate(tx: Tx<RO>, path: &str) -> Result<()> {
     let mut writer = BufWriter::new(&mut f);
 
     let mut pb = PreimagesProgressBar::new()?;
-    let it = UnhashedIterator::new(tx)?;
+    let it = PlainIterator::new(tx)?;
     for entry in it {
         match entry {
             Ok(AccountStorageItem::Account(address)) => {

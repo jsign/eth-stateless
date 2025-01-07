@@ -1,2 +1,2 @@
-pub mod hashed;
-pub mod unhashed;
+pub mod eip4762;
+pub mod plain;

@@ -7,7 +7,7 @@ use reth_db::{mdbx::tx::Tx, PlainAccountState, PlainStorageState};
 use reth_db_api::cursor::DbCursorRO;
 use reth_db_api::transaction::DbTx;
 
-pub struct HashedIterator {
+pub struct Eip4762Iterator {
     state: State,
 
     ordered_addresses: Vec<Address>,
@@ -24,7 +24,7 @@ enum State {
     End,
 }
 
-impl HashedIterator {
+impl Eip4762Iterator {
     pub fn new(tx: Tx<RO>) -> Result<Self> {
         let mut addresses = Vec::with_capacity(300_000_000);
         let mut cursor_accounts = tx.cursor_read::<PlainAccountState>()?;
@@ -36,7 +36,7 @@ impl HashedIterator {
         }
         addresses.par_sort_by_key(|addr| addr.1);
 
-        Ok(HashedIterator {
+        Ok(Eip4762Iterator {
             state: State::Account,
             ordered_addresses: addresses.into_iter().map(|(addr, _)| addr).collect(),
             ordered_addresses_idx: 0,
@@ -52,7 +52,7 @@ pub enum AccountStorageItem {
     StorageSlot(B256),
 }
 
-impl Iterator for HashedIterator {
+impl Iterator for Eip4762Iterator {
     type Item = Result<AccountStorageItem>;
 
     fn next(&mut self) -> Option<Self::Item> {
