@@ -1,18 +1,22 @@
 use alloy_primitives::Address;
-use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
-pub struct PreimagesProgressBar {
+pub struct AddressProgressBar {
     inner: ProgressBar,
 }
 
-impl PreimagesProgressBar {
-    pub fn new() -> Result<Self> {
+impl AddressProgressBar {
+    pub fn new() -> Self {
         let inner = ProgressBar::new(0x10000);
         inner.set_style(
-            ProgressStyle::with_template("{bar:50.cyan/blue} {percent}% [eta: {eta}] {msg}")?
+            ProgressStyle::with_template("{bar:50.cyan/blue} {percent}% [eta: {eta}] {msg}")
+                .unwrap()
                 .progress_chars("#>-"),
         );
-        Ok(Self { inner })
+        Self { inner }
+    }
+
+    pub fn finish(self) {
+        self.inner.finish();
     }
 
     pub fn progress(&mut self, addr: Address) {

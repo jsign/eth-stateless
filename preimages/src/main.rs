@@ -3,7 +3,7 @@ use clap::{command, Args, Parser};
 use iterators::{
     eip4762::Eip4762Iterator, plain::PlainIterator, AccountStorageItem, PreimageIterator,
 };
-use progress::PreimagesProgressBar;
+use progress::AddressProgressBar;
 use reth_db::mdbx::{tx::Tx, DatabaseArguments};
 use std::{
     fs::File,
@@ -69,9 +69,15 @@ fn main() -> Result<()> {
             order: iterator,
         } => {
             if iterator.plain {
+                println!("[1/1] Generating preimage file...");
                 generate(&path, PlainIterator::new(tx)?)?;
             } else {
-                generate(&path, Eip4762Iterator::new(tx)?)?;
+                println!("[1/2] Ordering account addresses by hash...");
+                let mut pb = AddressProgressBar::new();
+                let it = Eip4762Iterator::new(tx, |addr| pb.progress(addr))?;
+                pb.finish();
+                println!("[2/2] Generating preimage file...");
+                generate(&path, it)?;
             }
         }
     }
@@ -83,7 +89,7 @@ fn generate(path: &str, it: impl PreimageIterator) -> Result<()> {
     let mut f = File::create(path)?;
     let mut writer = BufWriter::new(&mut f);
 
-    let mut pb = PreimagesProgressBar::new()?;
+    let mut pb = AddressProgressBar::new();
     for entry in it {
         match entry {
             Ok(AccountStorageItem::Account(address)) => {

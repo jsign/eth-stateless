@@ -29,11 +29,15 @@ enum State {
 impl PreimageIterator for Eip4762Iterator {}
 
 impl Eip4762Iterator {
-    pub fn new(tx: Tx<RO>) -> Result<Self> {
+    pub fn new<P>(tx: Tx<RO>, mut progress: P) -> Result<Self>
+    where
+        P: FnMut(Address),
+    {
         let mut addresses = Vec::with_capacity(300_000_000);
         let mut cursor_accounts = tx.cursor_read::<PlainAccountState>()?;
         while let Some((address, _)) = cursor_accounts.next()? {
             addresses.push((address, keccak256(address)));
+            progress(address);
         }
         addresses.par_sort_by_key(|addr| addr.1);
 
