@@ -52,7 +52,9 @@ Example with `--eip4762` ordering:
 ```text
 $ cargo run -p preimages --release -- --datadir=<reth datadir path> generate --eip4762
 [1/2] Ordering account addresses by hash...
-##############>----------------------------------- 28% [eta: 9m] 0x47ece2c052834097b1e65044dc096c034369c2d4
+#################################################> 100% [eta: 0s] fffec5f54c839fc4a744bebaede23b6e4904007c                                                                                                                
+[2/2] Generating preimage file...
+#####>-------------------------------------------- 11% [eta: 49m] 1cb3c5ece6021f2d9bf63ba877f8dfc717db509ed66431bebb90c60fedb551ba
 ```
 
 ## LICENSE
