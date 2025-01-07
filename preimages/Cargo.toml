@@ -2,6 +2,8 @@
 name = "preimages"
 version = "0.1.0"
 edition = "2021"
+keywords = ["ethereum", "stateless", "preimages"]
+readme = "README.md"
 
 [dependencies]
 reth-db.workspace = true
@@ -11,3 +13,4 @@ alloy-primitives.workspace = true
 clap = "4.5.23"
 indicatif = "0.17.9"
 rayon = "1.10.0"
+hex = "0.4.3"

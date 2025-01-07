@@ -3,7 +3,7 @@ members = ["preimages"]
 resolver = "2"
 
 [workspace.dependencies]
-reth-db = { git = "https://github.com/paradigmxyz/reth.git", rev = "c0a8a7b" }
-reth-db-api = { git = "https://github.com/paradigmxyz/reth.git", rev = "c0a8a7b" }
-alloy-primitives = "0.8.15"
+reth-db = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.1.5" }
+reth-db-api = { git = "https://github.com/paradigmxyz/reth.git", tag = "v1.1.5" }
+alloy-primitives = "0.8.18"
 anyhow = "1.0.40"
