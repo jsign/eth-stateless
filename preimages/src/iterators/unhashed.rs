@@ -6,7 +6,7 @@ use reth_db::{mdbx::tx::Tx, PlainAccountState, PlainStorageState};
 use reth_db_api::cursor::DbCursorRO;
 use reth_db_api::transaction::DbTx;
 
-pub struct AccountStorageIterator {
+pub struct UnhashedIterator {
     cursor_accounts: Cursor<RO, PlainAccountState>,
     cursor_storage_slots: Cursor<RO, PlainStorageState>,
 
@@ -20,12 +20,12 @@ enum State {
     End,
 }
 
-impl AccountStorageIterator {
+impl UnhashedIterator {
     pub fn new(tx: Tx<RO>) -> Result<Self> {
         let cursor_accounts = tx.cursor_read::<PlainAccountState>()?;
         let cursor_storage_slots = tx.cursor_read::<PlainStorageState>()?;
 
-        Ok(AccountStorageIterator {
+        Ok(UnhashedIterator {
             cursor_accounts,
             cursor_storage_slots,
             state: State::Account,
@@ -39,7 +39,7 @@ pub enum AccountStorageItem {
     StorageSlot(B256),
 }
 
-impl Iterator for AccountStorageIterator {
+impl Iterator for UnhashedIterator {
     type Item = Result<AccountStorageItem>;
 
     fn next(&mut self) -> Option<Self::Item> {
