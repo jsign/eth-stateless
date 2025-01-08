@@ -62,7 +62,7 @@ impl Iterator for PlainIterator {
                 match next_account {
                     Some((address, _)) => {
                         self.state = State::StorageSlot(address);
-                        self.next()
+                        Some(Ok(AccountStorageItem::Account(address)))
                     }
                     None => {
                         self.state = State::End;
@@ -76,9 +76,8 @@ impl Iterator for PlainIterator {
                         self.buf_storage_slot = None;
                         return Some(Ok(AccountStorageItem::StorageSlot(key)));
                     } else {
-                        let curr_addr = *address;
                         self.state = State::Account;
-                        return Some(Ok(AccountStorageItem::Account(curr_addr)));
+                        return self.next();
                     }
                 }
                 let next_storage_slot = match self.cursor_storage_slots.next() {
@@ -91,9 +90,8 @@ impl Iterator for PlainIterator {
                         self.next()
                     }
                     None => {
-                        let curr_addr = *address;
                         self.state = State::Account;
-                        Some(Ok(AccountStorageItem::Account(curr_addr)))
+                        self.next()
                     }
                 }
             }
