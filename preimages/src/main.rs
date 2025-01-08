@@ -36,12 +36,7 @@ enum SubCommand {
 
     #[command(name = "verify", about = "Verify preimage file")]
     Verify {
-        #[arg(
-            short = 'i',
-            long = "preimages-file-path",
-            help = "Preimages file path",
-            default_value = "preimages.bin"
-        )]
+        #[arg(long = "path", help = "Preimages file path to verify")]
         path: String,
 
         #[command(flatten)]
