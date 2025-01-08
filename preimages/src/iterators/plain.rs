@@ -74,7 +74,7 @@ impl Iterator for PlainIterator {
                 if let Some((addr, key)) = self.buf_storage_slot {
                     if addr == *address {
                         self.buf_storage_slot = None;
-                        return Some(Ok(AccountStorageItem::StorageSlot(key)));
+                        return Some(Ok(AccountStorageItem::StorageSlot(addr, key)));
                     } else {
                         self.state = State::Account;
                         return self.next();

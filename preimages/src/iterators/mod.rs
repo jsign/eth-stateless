@@ -14,6 +14,6 @@ pub mod plain;
 
 pub enum AccountStorageItem {
     Account(Address),
-    StorageSlot(B256),
+    StorageSlot(Address, B256),
 }
 pub trait PreimageIterator: Iterator<Item = Result<AccountStorageItem>> {}

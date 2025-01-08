@@ -99,7 +99,7 @@ impl Iterator for Eip4762Iterator {
                 match sorted_storage_slots.get(self.buf_storage_slot_idx) {
                     Some(key) => {
                         self.buf_storage_slot_idx += 1;
-                        Some(Ok(AccountStorageItem::StorageSlot(*key)))
+                        Some(Ok(AccountStorageItem::StorageSlot(*address, *key)))
                     }
                     None => {
                         self.buf_storage_slot = None;
