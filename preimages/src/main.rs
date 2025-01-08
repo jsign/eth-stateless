@@ -89,20 +89,16 @@ fn main() -> Result<()> {
 }
 
 fn generate(path: &str, it: impl PreimageIterator, mut pb: AddressProgressBar) -> Result<()> {
-    let mut f = File::create(path)?;
-    let mut writer = BufWriter::new(&mut f);
-
+    let mut f = BufWriter::new(File::create(path)?);
     for entry in it {
         match entry {
             Ok(AccountStorageItem::Account(address)) => {
                 pb.progress(address);
-                writer
-                    .write_all(address.as_slice())
+                f.write_all(address.as_slice())
                     .context("writing address preimage")?;
             }
             Ok(AccountStorageItem::StorageSlot(ss)) => {
-                writer
-                    .write_all(ss.as_slice())
+                f.write_all(ss.as_slice())
                     .context("writing storage slot preimage")?;
             }
             Err(e) => return Err(e),
