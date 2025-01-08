@@ -83,16 +83,16 @@ impl Iterator for Eip4762Iterator {
             },
             State::StorageSlot(address) => {
                 let sorted_storage_slots = self.buf_storage_slot.get_or_insert_with(|| {
-                    let mut storage_slots = Vec::new();
-                    self.cursor_storage_slots.seek(*address).unwrap();
-
-                    while let Some((addr, ss)) = self.cursor_storage_slots.next().unwrap() {
+                    let mut storage_slots = Vec::with_capacity(1 << 15);
+                    let mut curr = self.cursor_storage_slots.seek(*address).unwrap();
+                    while let Some((addr, ss)) = curr {
                         if addr != *address {
                             break;
                         }
                         storage_slots.push((ss.key, keccak256(ss.key)));
+                        curr = self.cursor_storage_slots.next().unwrap();
                     }
-                    storage_slots.par_sort_by_key(|addr| addr.1);
+                    storage_slots.par_sort_by_key(|(_, hashed_ss)| *hashed_ss);
                     storage_slots.into_iter().map(|(ss, _)| ss).collect()
                 });
 
