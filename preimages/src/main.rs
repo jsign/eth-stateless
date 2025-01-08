@@ -1,10 +1,10 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use clap::{command, Args, Parser};
 use iterators::{
     eip4762::Eip4762Iterator, plain::PlainIterator, AccountStorageItem, PreimageIterator,
 };
 use progress::AddressProgressBar;
-use reth_db::mdbx::{tx::Tx, DatabaseArguments};
+use reth_db::mdbx::{tx::Tx, DatabaseArguments, MaxReadTransactionDuration};
 use std::{
     fs::File,
     io::{BufWriter, Write},
@@ -51,17 +51,16 @@ struct OrderArgs {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let datadir = Path::new(&cli.datadir);
-
-    let db = reth_db::open_db_read_only(
-        datadir.join("db").as_path(),
-        DatabaseArguments::default().with_max_read_transaction_duration(Some(
-            reth_db::mdbx::MaxReadTransactionDuration::Unbounded,
-        )),
-    )
-    .unwrap();
-    let tx = db.begin_ro_txn().context("opening tx")?;
-    let tx = Tx::new(tx);
+    let tx = Tx::new(
+        reth_db::open_db_read_only(
+            Path::new(&cli.datadir).join("db").as_path(),
+            DatabaseArguments::default()
+                .with_max_read_transaction_duration(Some(MaxReadTransactionDuration::Unbounded)),
+        )
+        .map_err(|e| anyhow!("Failed to open db: {}", e))?
+        .begin_ro_txn()
+        .context("opening tx")?,
+    );
 
     match cli.subcmd {
         SubCommand::Generate {
