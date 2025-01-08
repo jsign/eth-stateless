@@ -1,17 +1,11 @@
-use alloy_primitives::{Address, FixedBytes};
 use anyhow::{anyhow, Context, Result};
 use clap::{command, Args, Parser};
-use iterators::{
-    eip4762::Eip4762Iterator, plain::PlainIterator, AccountStorageItem, PreimageIterator,
-};
+use iterators::{eip4762::Eip4762Iterator, plain::PlainIterator};
 use progress::AddressProgressBar;
-use reth_db::mdbx::{tx::Tx, DatabaseArguments, MaxReadTransactionDuration};
-use std::{
-    fs::File,
-    io::{BufReader, BufWriter, Read, Write},
-    path::Path,
-};
+use reth_db::mdbx::{tx::Tx, DatabaseArguments, MaxReadTransactionDuration, RO};
+use std::path::Path;
 
+mod cmds;
 mod iterators;
 mod progress;
 
@@ -78,99 +72,53 @@ fn main() -> Result<()> {
     );
 
     match cli.subcmd {
-        SubCommand::Generate { path, order } => {
-            if order.plain {
-                println!("[1/1] Generating preimage file...");
-                generate(
-                    &path,
-                    PlainIterator::new(tx)?,
-                    AddressProgressBar::new(false),
-                )?;
-            } else if order.eip4762 {
-                println!("[1/2] Ordering account addresses by hash...");
-                let mut pb = AddressProgressBar::new(false);
-                let it = Eip4762Iterator::new(tx, Some(|addr| pb.progress(addr)))?;
-                println!("[2/2] Generating preimage file...");
-                generate(&path, it, AddressProgressBar::new(true))?;
-            } else {
-                return Err(anyhow!("No ordering specified"));
-            }
-        }
+        SubCommand::Generate { path, order } => generate_cmd(tx, &path, order)?,
         SubCommand::Verify { path, order } => {
-            if order.plain {
-                println!("[1/2] Verifying provided preimage file...");
-                verify(
-                    &path,
-                    PlainIterator::new(tx)?,
-                    AddressProgressBar::new(false),
-                )?;
-                println!("[2/2] The preimage file is valid!");
-            } else if order.eip4762 {
-                println!("[1/3] Ordering account addresses by hash...");
-                let mut pb = AddressProgressBar::new(false);
-                let it = Eip4762Iterator::new(tx, Some(|addr| pb.progress(addr)))?;
-                println!("[2/3] Verifying provided preimage file...");
-                verify(&path, it, AddressProgressBar::new(true))?;
-                println!("[3/3] The preimage file is valid!");
-            } else {
-                return Err(anyhow!("No ordering specified"));
-            }
+            verify_cmd(tx, &path, order)?;
         }
     }
 
     Ok(())
 }
 
-fn generate(path: &str, it: impl PreimageIterator, mut pb: AddressProgressBar) -> Result<()> {
-    let mut f = BufWriter::new(File::create(path)?);
-    for entry in it {
-        match entry {
-            Ok(AccountStorageItem::Account(address)) => {
-                pb.progress(address);
-                f.write_all(address.as_slice())
-                    .context("writing address preimage")?;
-            }
-            Ok(AccountStorageItem::StorageSlot(_, ss)) => {
-                f.write_all(ss.as_slice())
-                    .context("writing storage slot preimage")?;
-            }
-            Err(e) => return Err(e),
-        }
+fn generate_cmd(tx: Tx<RO>, path: &str, order: OrderArgs) -> Result<()> {
+    if order.plain {
+        println!("[1/1] Generating preimage file...");
+        cmds::generate(
+            path,
+            PlainIterator::new(tx)?,
+            AddressProgressBar::new(false),
+        )?;
+    } else if order.eip4762 {
+        println!("[1/2] Ordering account addresses by hash...");
+        let mut pb = AddressProgressBar::new(false);
+        let it = Eip4762Iterator::new(tx, Some(|addr| pb.progress(addr)))?;
+        println!("[2/2] Generating preimage file...");
+        cmds::generate(path, it, AddressProgressBar::new(true))?;
+    } else {
+        return Err(anyhow!("No ordering specified"));
     }
     Ok(())
 }
 
-fn verify(path: &str, it: impl PreimageIterator, mut pb: AddressProgressBar) -> Result<()> {
-    let mut reader = BufReader::new(File::open(path)?);
-
-    for entry in it {
-        match entry {
-            Ok(AccountStorageItem::Account(addr)) => {
-                pb.progress(addr);
-                let mut file_addr: Address = Default::default();
-                reader
-                    .read_exact(file_addr.as_mut_slice())
-                    .context("reading address preimage")?;
-
-                if addr != file_addr.as_slice() {
-                    return Err(anyhow!("Address {} preimage mismatch", file_addr));
-                }
-            }
-            Ok(AccountStorageItem::StorageSlot(address, ss)) => {
-                let mut file_ss: FixedBytes<32> = Default::default();
-                reader
-                    .read_exact(file_ss.as_mut_slice())
-                    .context("reading storage slot preimage")?;
-                if ss != file_ss.as_slice() {
-                    return Err(anyhow!(
-                        "Storage slot {} preimage (address: {}) mistmatch",
-                        ss,
-                        address
-                    ));
-                }
-            }
-            Err(e) => return Err(e),
-        }
+fn verify_cmd(tx: Tx<RO>, path: &str, order: OrderArgs) -> Result<()> {
+    if order.plain {
+        println!("[1/2] Verifying provided preimage file...");
+        cmds::verify(
+            path,
+            PlainIterator::new(tx)?,
+            AddressProgressBar::new(false),
+        )?;
+        println!("[2/2] The preimage file is valid!");
+    } else if order.eip4762 {
+        println!("[1/3] Ordering account addresses by hash...");
+        let mut pb = AddressProgressBar::new(false);
+        let it = Eip4762Iterator::new(tx, Some(|addr| pb.progress(addr)))?;
+        println!("[2/3] Verifying provided preimage file...");
+        cmds::verify(path, it, AddressProgressBar::new(true))?;
+        println!("[3/3] The preimage file is valid!");
+    } else {
+        return Err(anyhow!("No ordering specified"));
     }
     Ok(())
 }
