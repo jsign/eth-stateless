@@ -1,6 +1,6 @@
-//! Implementation of the EIP-4762 preimage access sequence iterator.
+//! Implementation of the EIP-7748 preimage access sequence iterator.
 //!
-//! This module provides an account and storage slot iterator respecting the order defined in EIP-4762.
+//! This module provides an account and storage slot iterator respecting the order defined in EIP-7748.
 //! The ordering can be summarized as:
 //! 1. DFS the state tree, until an account is reached.
 //! 2. For each account, iterate over its state trie also in DFS order.
@@ -20,7 +20,7 @@ use reth_db_api::transaction::DbTx;
 
 use super::{AccountStorageItem, PreimageIterator};
 
-pub struct Eip4762Iterator {
+pub struct Eip7748Iterator {
     state: State,
 
     ordered_addresses: Vec<Address>,
@@ -37,9 +37,9 @@ enum State {
     End,
 }
 
-impl PreimageIterator for Eip4762Iterator {}
+impl PreimageIterator for Eip7748Iterator {}
 
-impl Eip4762Iterator {
+impl Eip7748Iterator {
     pub fn new<P>(tx: Tx<RO>, mut progress: Option<P>) -> Result<Self>
     where
         P: FnMut(Address),
@@ -54,7 +54,7 @@ impl Eip4762Iterator {
         }
         addresses.par_sort_by_key(|addr| addr.1);
 
-        Ok(Eip4762Iterator {
+        Ok(Eip7748Iterator {
             state: State::Account,
             ordered_addresses: addresses.into_iter().map(|(addr, _)| addr).collect(),
             ordered_addresses_idx: 0,
@@ -65,7 +65,7 @@ impl Eip4762Iterator {
     }
 }
 
-impl Iterator for Eip4762Iterator {
+impl Iterator for Eip7748Iterator {
     type Item = Result<AccountStorageItem>;
 
     fn next(&mut self) -> Option<Self::Item> {

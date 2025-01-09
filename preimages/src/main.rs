@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use clap::{command, Args, Parser};
-use iterators::{eip4762::Eip4762Iterator, plain::PlainIterator};
+use iterators::{eip7748::Eip7748Iterator, plain::PlainIterator};
 use progress::AddressProgressBar;
 use reth_db::mdbx::{tx::Tx, DatabaseArguments, MaxReadTransactionDuration, RO};
 use std::path::Path;
@@ -49,8 +49,8 @@ enum SubCommand {
 struct OrderArgs {
     #[arg(long, help = "Use plain ordering")]
     plain: bool,
-    #[arg(long, help = "Use EIP-4762 ordering (i.e: hashed)")]
-    eip4762: bool,
+    #[arg(long, help = "Use EIP-7748 ordering (i.e: hashed)")]
+    eip7748: bool,
 }
 
 fn main() -> Result<()> {
@@ -84,10 +84,10 @@ fn generate_cmd(tx: Tx<RO>, path: &str, order: OrderArgs) -> Result<()> {
             PlainIterator::new(tx)?,
             AddressProgressBar::new(false),
         )?;
-    } else if order.eip4762 {
+    } else if order.eip7748 {
         println!("[1/2] Ordering account addresses by hash...");
         let mut pb = AddressProgressBar::new(false);
-        let it = Eip4762Iterator::new(tx, Some(|addr| pb.progress(addr)))?;
+        let it = Eip7748Iterator::new(tx, Some(|addr| pb.progress(addr)))?;
         println!("[2/2] Generating preimage file...");
         cmds::generate(path, it, AddressProgressBar::new(true))?;
     } else {
@@ -105,10 +105,10 @@ fn verify_cmd(tx: Tx<RO>, path: &str, order: OrderArgs) -> Result<()> {
             AddressProgressBar::new(false),
         )?;
         println!("[2/2] The preimage file is valid!");
-    } else if order.eip4762 {
+    } else if order.eip7748 {
         println!("[1/3] Ordering account addresses by hash...");
         let mut pb = AddressProgressBar::new(false);
-        let it = Eip4762Iterator::new(tx, Some(|addr| pb.progress(addr)))?;
+        let it = Eip7748Iterator::new(tx, Some(|addr| pb.progress(addr)))?;
         println!("[2/3] Verifying provided preimage file...");
         cmds::verify(path, it, AddressProgressBar::new(true))?;
         println!("[3/3] The preimage file is valid!");

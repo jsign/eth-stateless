@@ -35,7 +35,7 @@ The tool provides two subcommands for preimages:
 Two ordering modes are supported:
 
 - `--plain`: Use plain ordering
-- `--eip4762`: Use EIP-4762 ordering (i.e: hashed)
+- `--eip7748`: Use EIP-7748 ordering (i.e: hashed)
 
 ### Generate
 
@@ -43,12 +43,12 @@ Two ordering modes are supported:
 $ cargo run -p preimages -- generate --help
 Generate preimage file
 
-Usage: preimages --datadir <DATADIR> generate [OPTIONS] <--plain|--eip4762>
+Usage: preimages --datadir <DATADIR> generate [OPTIONS] <--plain|--eip7748>
 
 Options:
       --output-path <PATH>  Preimages file output path [default: preimages.bin]
       --plain               Use plain ordering
-      --eip4762             Use EIP-4762 ordering (i.e: hashed)
+      --eip7748             Use EIP-7748 ordering (i.e: hashed)
   -h, --help                Print help
 ```
 
@@ -61,7 +61,7 @@ $ cargo run -p preimages --release -- --datadir=<reth datadir path> generate --p
 ```
 
 ```text
-$ cargo run -p preimages --release -- --datadir=<reth datadir path> generate --eip4762
+$ cargo run -p preimages --release -- --datadir=<reth datadir path> generate --eip7748
 [1/2] Ordering account addresses by hash...
 #################################################> 100% [eta: 0s] fffec5f54c839fc4a744bebaede23b6e4904007c                                                                                                                
 [2/2] Generating preimage file...
@@ -73,19 +73,19 @@ $ cargo run -p preimages --release -- --datadir=<reth datadir path> generate --e
 ```text
 Verify preimage file
 
-Usage: preimages --datadir <DATADIR> verify [OPTIONS] <--plain|--eip4762>
+Usage: preimages --datadir <DATADIR> verify [OPTIONS] <--plain|--eip7748>
 
 Options:
   -i, --preimages-file-path <PATH>  Preimages file path [default: preimages.bin]
       --plain                       Use plain ordering
-      --eip4762                     Use EIP-4762 ordering (i.e: hashed)
+      --eip7748                     Use EIP-7748 ordering (i.e: hashed)
   -h, --help                        Print help
 ```
 
-Example verifying a generated `--eip4762` preimage file:
+Example verifying a generated `--eip7748` preimage file:
 
 ```text
-$ cargo run -p preimages --release -- --datadir=/fast/reth/reth_data verify --path preimages.bin --eip4762 
+$ cargo run -p preimages --release -- --datadir=/fast/reth/reth_data verify --path preimages.bin --eip7748 
 #>------------------------------------------------ 2% [eta: 54m] 063f6a4b1968bd386869d8f9083e6d5b9525ccf980ab4d4d8d42d824dccaf1ab
 ```
 
