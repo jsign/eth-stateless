@@ -1,7 +1,11 @@
+use crate::iterators::plain::PlainIterator;
 use crate::iterators::{AccountStorageItem, PreimageIterator};
 use crate::progress::AddressProgressBar;
 use alloy_primitives::{Address, FixedBytes};
 use anyhow::{anyhow, Context, Result};
+use reth_db::mdbx::tx::Tx;
+use reth_db::mdbx::RO;
+use std::collections::{BinaryHeap, HashMap};
 use std::{
     fs::File,
     io::{BufReader, BufWriter, Read, Write},
@@ -58,5 +62,49 @@ pub fn verify(path: &str, it: impl PreimageIterator, mut pb: AddressProgressBar)
             Err(e) => return Err(e),
         }
     }
+    Ok(())
+}
+
+pub fn storage_slot_freq(tx: Tx<RO>, n: usize) -> Result<()> {
+    let mut counts: HashMap<FixedBytes<32>, i32> = HashMap::new();
+    let mut pb = AddressProgressBar::new(false);
+    let it = PlainIterator::new(tx)?;
+    for entry in it {
+        match entry {
+            Ok(AccountStorageItem::Account(address)) => {
+                pb.progress(address);
+            }
+            Ok(AccountStorageItem::StorageSlot(_, key)) => {
+                counts.entry(key).and_modify(|e| *e += 1).or_insert(1);
+                if counts.len() > 150_000_000 {
+                    counts.retain(|_, count| *count > 1);
+                }
+            }
+            Err(e) => return Err(e),
+        }
+    }
+
+    let mut heap = BinaryHeap::new();
+    for (&num, &count) in counts.iter() {
+        heap.push((-count, num));
+        if heap.len() > n {
+            heap.pop();
+        }
+    }
+
+    let mut top_n = Vec::with_capacity(n);
+    while let Some((_, key)) = heap.pop() {
+        top_n.push(key);
+    }
+    let mut sum = 0;
+
+    println!("Top {} most repeated storage slots:", n);
+    for key in top_n.iter().rev() {
+        println!("{}: {}", key, counts[key]);
+        sum += counts[key];
+    }
+    println!("Total count: {}", sum);
+    println!("Total size: {}*32~={} MiB", n, sum * 32 / 1024 / 1024);
+
     Ok(())
 }

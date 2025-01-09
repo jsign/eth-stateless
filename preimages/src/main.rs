@@ -42,6 +42,20 @@ enum SubCommand {
         #[command(flatten)]
         order: OrderArgs,
     },
+
+    #[command(
+        name = "storage-slot-freq",
+        about = "Analyze top N storage slot frequency"
+    )]
+    StorageSlotsFrequency {
+        #[arg(
+            short = 'n',
+            long = "top-n",
+            help = "Get frequency of top N storage slots ordered by frequency",
+            default_value = "25"
+        )]
+        n: usize,
+    },
 }
 
 #[derive(Args)]
@@ -71,6 +85,7 @@ fn main() -> Result<()> {
         SubCommand::Verify { path, order } => {
             verify_cmd(tx, &path, order)?;
         }
+        SubCommand::StorageSlotsFrequency { n } => cmds::storage_slot_freq(tx, n)?,
     }
 
     Ok(())
