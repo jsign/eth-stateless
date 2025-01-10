@@ -53,7 +53,7 @@ enum SubCommand {
 
     #[command(
         name = "storage-slot-freq",
-        about = "Analyze top N storage slot frequency"
+        about = "Analyze storage-slot 29-byte prefix frequency and size impact"
     )]
     StorageSlotsFrequency,
 }
@@ -97,7 +97,7 @@ fn main() -> Result<()> {
         SubCommand::Verify { path, order } => {
             verify_cmd(tx, &path, order)?;
         }
-        SubCommand::StorageSlotsFrequency => cmds::storage_slot_freq(tx, 25)?,
+        SubCommand::StorageSlotsFrequency => cmds::storage_slot_freq::<29>(tx, 1_000)?,
     }
 
     Ok(())
