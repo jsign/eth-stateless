@@ -34,7 +34,7 @@ enum State {
 }
 
 impl PlainIterator {
-    pub fn new(tx: Tx<RO>) -> Result<Self> {
+    pub fn new(tx: &Tx<RO>) -> Result<Self> {
         let cursor_accounts = tx.cursor_read::<PlainAccountState>()?;
         let cursor_storage_slots = tx.cursor_read::<PlainStorageState>()?;
 

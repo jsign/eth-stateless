@@ -40,7 +40,7 @@ enum State {
 impl PreimageIterator for Eip7748Iterator {}
 
 impl Eip7748Iterator {
-    pub fn new<P>(tx: Tx<RO>, mut progress: Option<P>) -> Result<Self>
+    pub fn new<P>(tx: &Tx<RO>, mut progress: Option<P>) -> Result<Self>
     where
         P: FnMut(Address),
     {

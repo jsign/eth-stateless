@@ -1,9 +1,17 @@
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use clap::{command, Args, Parser};
 use iterators::{eip7748::Eip7748Iterator, plain::PlainIterator};
 use progress::AddressProgressBar;
-use reth_db::mdbx::{tx::Tx, DatabaseArguments, MaxReadTransactionDuration, RO};
-use std::path::Path;
+use reth_chainspec::ChainSpecBuilder;
+use reth_db::{
+    mdbx::{tx::Tx, DatabaseArguments, MaxReadTransactionDuration, RO},
+    Database, DatabaseEnv,
+};
+use reth_node_ethereum::EthereumNode;
+use reth_node_types::NodeTypesWithDBAdapter;
+use reth_provider::{providers::StaticFileProvider, ProviderFactory, StageCheckpointReader};
+use reth_stages::StageId;
+use std::{path::Path, sync::Arc};
 
 mod cmds;
 mod iterators;
@@ -47,15 +55,7 @@ enum SubCommand {
         name = "storage-slot-freq",
         about = "Analyze top N storage slot frequency"
     )]
-    StorageSlotsFrequency {
-        #[arg(
-            short = 'n',
-            long = "top-n",
-            help = "Get frequency of top N storage slots ordered by frequency",
-            default_value = "25"
-        )]
-        n: usize,
-    },
+    StorageSlotsFrequency,
 }
 
 #[derive(Args)]
@@ -69,29 +69,41 @@ struct OrderArgs {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let tx = Tx::new(
-        reth_db::open_db_read_only(
-            Path::new(&cli.datadir).join("db").as_path(),
-            DatabaseArguments::default()
-                .with_max_read_transaction_duration(Some(MaxReadTransactionDuration::Unbounded)),
-        )
-        .map_err(|e| anyhow!("Failed to open db: {}", e))?
-        .begin_ro_txn()
-        .context("opening tx")?,
-    );
 
+    let db_path = Path::new(&cli.datadir).join("db");
+    let db = reth_db::open_db_read_only(
+        db_path.as_ref(),
+        DatabaseArguments::default()
+            .with_max_read_transaction_duration(Some(MaxReadTransactionDuration::Unbounded)),
+    )
+    .map_err(|err| anyhow!(err))?;
+    let spec = ChainSpecBuilder::mainnet().build();
+    let factory = ProviderFactory::<NodeTypesWithDBAdapter<EthereumNode, Arc<DatabaseEnv>>>::new(
+        db.into(),
+        spec.into(),
+        StaticFileProvider::read_only(db_path.join("static_files"), true)?,
+    );
+    let provider = factory.provider()?;
+
+    let latest_block_number = provider
+        .get_stage_checkpoint(StageId::Finish)?
+        .map(|ch| ch.block_number)
+        .ok_or(anyhow!("No finish checkpoint"))?;
+    println!("Database block number: {:?}", latest_block_number);
+
+    let tx = provider.tx_ref();
     match cli.subcmd {
         SubCommand::Generate { path, order } => generate_cmd(tx, &path, order)?,
         SubCommand::Verify { path, order } => {
             verify_cmd(tx, &path, order)?;
         }
-        SubCommand::StorageSlotsFrequency { n } => cmds::storage_slot_freq(tx, n)?,
+        SubCommand::StorageSlotsFrequency => cmds::storage_slot_freq(tx, 25)?,
     }
 
     Ok(())
 }
 
-fn generate_cmd(tx: Tx<RO>, path: &str, order: OrderArgs) -> Result<()> {
+fn generate_cmd(tx: &Tx<RO>, path: &str, order: OrderArgs) -> Result<()> {
     if order.plain {
         println!("[1/1] Generating preimage file...");
         cmds::generate(
@@ -111,7 +123,7 @@ fn generate_cmd(tx: Tx<RO>, path: &str, order: OrderArgs) -> Result<()> {
     Ok(())
 }
 
-fn verify_cmd(tx: Tx<RO>, path: &str, order: OrderArgs) -> Result<()> {
+fn verify_cmd(tx: &Tx<RO>, path: &str, order: OrderArgs) -> Result<()> {
     if order.plain {
         println!("[1/2] Verifying provided preimage file...");
         cmds::verify(
