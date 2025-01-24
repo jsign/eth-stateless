@@ -10,7 +10,7 @@ A toolbox for various Ethereum stateless tasks, such as:
 - Cargo
 - `--datadir` folder of a synced full-node Reth (i.e: archive node _not_ required)
 
-## Run
+## Preimages
 
 ```text
 Usage: preimages --datadir <DATADIR> <COMMAND>
@@ -26,17 +26,18 @@ Options:
   -h, --help               Print help
 ```
 
-### Preimages
+### Commands
 
 The tool provides two subcommands for preimages:
 
 - `generate`: Generate preimage file
 - `verify`: Verify preimage file
+- `storage-slot-freq` does a frequency analysis of the 29-byte prefix of storage slots
 
-Two ordering modes are supported:
+For the `generate` and `verify` commands, two ordering modes are supported:
 
-- `--plain`: Use plain ordering
-- `--eip7748`: Use EIP-7748 ordering (i.e: hashed)
+- `--plain`: Use plain ordering (i.e. unhashed)
+- `--eip7748`: Use EIP-7748 ordering (i.e. trie(s) DFS (hashed))
 
 ### Generate
 
