@@ -93,20 +93,20 @@ pub fn storage_slot_freq<const N: usize>(tx: &Tx<RO>, top_n_detail: usize) -> Re
 
     let mut counts_vec = counts.iter().collect::<Vec<_>>();
     counts_vec.sort_unstable_by_key(|(_, v)| std::cmp::Reverse(*v));
-    let mut cummulative_count = 0;
+    let mut cummulative_count: u64 = 0;
     println!(
         "Top {} storage slot {}-byte prefix repetitions:",
         top_n_detail, N
     );
     for e in counts_vec.iter().take(top_n_detail) {
-        cummulative_count += e.1;
+        cummulative_count += *e.1 as u64;
         println!(
             "{}: {} ({:.2}%) ~{}MiB (cumm {:.2}MiB)",
             hex::encode(e.0),
             e.1,
             (*e.1 as f64) / (total_storage_slots as f64) * 100.0,
             e.1 * (N as u32) / 1024 / 1024,
-            cummulative_count * (N as u32) / 1024 / 1024,
+            cummulative_count * (N as u64) / 1024 / 1024,
         );
     }
 

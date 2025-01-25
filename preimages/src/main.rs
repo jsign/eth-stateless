@@ -5,7 +5,7 @@ use progress::AddressProgressBar;
 use reth_chainspec::ChainSpecBuilder;
 use reth_db::{
     mdbx::{tx::Tx, DatabaseArguments, MaxReadTransactionDuration, RO},
-    Database, DatabaseEnv,
+    DatabaseEnv,
 };
 use reth_node_ethereum::EthereumNode;
 use reth_node_types::NodeTypesWithDBAdapter;
