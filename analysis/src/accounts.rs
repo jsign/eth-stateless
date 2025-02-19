@@ -1,44 +1,31 @@
+use std::sync::LazyLock;
+
 use alloy_primitives::b256;
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
+use reth_db::mdbx::RO;
 use reth_db::mdbx::{tx::Tx, TransactionKind};
 use reth_db::{Bytecodes, PlainAccountState, PlainStorageState};
 use reth_db_api::cursor::DbCursorRO;
 use reth_db_api::transaction::DbTx;
-use serde::{Deserialize, Serialize};
+use tabled::Tabled;
 
-const PROGRESS_STYLE: &str = "{msg} [{bar:40.cyan/blue}] {pos}/{len} [{elapsed_precise}] ({eta})";
-#[derive(Debug, Default, Serialize, Deserialize)]
-pub struct Report {
-    eoa_count: u64,
-    contract_count: u64,
+static PROGRESS_STYLE: LazyLock<ProgressStyle> = LazyLock::new(|| {
+    ProgressStyle::with_template("{bar:50.cyan/blue} {percent}% [eta: {eta}] {msg}")
+        .expect("Failed to set progress bar style template")
+        .progress_chars("#>-")
+});
 
-    code_stats: Stats,
-    storage_slots_stats: Stats,
-}
-
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Tabled)]
 pub struct Stats {
     average: u64,
     median: u64,
     p99: u64,
 }
 
-pub fn generate(tx: &mut Tx<impl TransactionKind>) -> Result<Report> {
-    let (eoa_count, contract_count, code_stats) = account_stats(tx)?;
-    let storage_slots_stats = storage_slots_stats(tx)?;
-
-    Ok(Report {
-        eoa_count,
-        contract_count,
-        code_stats,
-        storage_slots_stats,
-    })
-}
-
-fn account_stats(tx: &mut Tx<impl TransactionKind>) -> Result<(u64, u64, Stats)> {
+pub fn account_stats(tx: &Tx<RO>) -> Result<(u64, u64, Stats)> {
     let bar = ProgressBar::new(tx.entries::<PlainAccountState>()? as u64)
-        .with_style(ProgressStyle::with_template(PROGRESS_STYLE).unwrap())
+        .with_style(PROGRESS_STYLE.clone())
         .with_message("Analyzing accounts...");
 
     let mut code_lens = Vec::<u64>::new();
@@ -80,7 +67,7 @@ fn account_stats(tx: &mut Tx<impl TransactionKind>) -> Result<(u64, u64, Stats)>
 
 fn storage_slots_stats(tx: &mut Tx<impl TransactionKind>) -> Result<Stats> {
     let bar = ProgressBar::new(tx.entries::<PlainStorageState>()? as u64)
-        .with_style(ProgressStyle::with_template(PROGRESS_STYLE).unwrap())
+        .with_style(PROGRESS_STYLE.clone())
         .with_message("Analyzing storage slots...");
 
     let mut addresses_ss_count = Vec::<u64>::new();
