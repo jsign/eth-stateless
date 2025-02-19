@@ -1,4 +1,7 @@
-use std::path::Path;
+use std::{
+    io::{BufWriter, Write},
+    path::Path,
+};
 
 use anyhow::Result;
 use clap::Parser;
@@ -64,7 +67,6 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
             contracts: accounts_data.1,
             total: accounts_data.0 + accounts_data.1,
         }])
-        .with(Style::markdown())
         .with(Panel::header("Accounts"))
         .to_string();
 
@@ -73,27 +75,99 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
 
     {
         let table = Table::new(vec![accounts_data.2])
-            .with(Style::markdown())
-            .with(Panel::header("Contracts code-length"))
+            .with(Panel::header("Code lengths"))
             .to_string();
 
         println!("{}\n", table);
     }
 
-    let storage_slots_data = accounts::storage_slots_stats(&tx)?;
+    let stem_stats = accounts::stem_stats(&tx, 256)?;
     {
-        let mut ss_counts = storage_slots_data
+        let total_stems = stem_stats
             .iter()
-            .map(|a| a.total_slots)
-            .collect::<Vec<_>>();
+            .map(|a| 1 + a.ss_stems.len() + a.code_stems as usize)
+            .sum::<usize>();
 
-        let table = Table::new(vec![calculate_stats(&mut ss_counts)])
-            .with(Style::markdown())
-            .with(Panel::header("Storage Slots stats"))
-            .to_string();
+        #[derive(Tabled)]
+        struct StemCountRow {
+            name: &'static str,
+            total: u64,
+            #[tabled(rename = "%", format = "{:.2}%")]
+            percentage: f64,
+        }
+        let contract_header_stems = stem_stats.len() as u64;
+        let storage_slots_stems = stem_stats.iter().map(|a| a.ss_stems.len() as u64).sum();
+        let code_chunks_stems = stem_stats.iter().map(|a| a.code_stems as u64).sum();
+        let table = Table::new([
+            StemCountRow {
+                name: "Contract header stems",
+                total: contract_header_stems,
+                percentage: contract_header_stems as f64 / total_stems as f64 * 100.0,
+            },
+            StemCountRow {
+                name: "Storage-slots stems",
+                total: storage_slots_stems,
+                percentage: storage_slots_stems as f64 / total_stems as f64 * 100.0,
+            },
+            StemCountRow {
+                name: "Code-chunks stems",
+                total: code_chunks_stems,
+                percentage: code_chunks_stems as f64 / total_stems as f64 * 100.0,
+            },
+        ])
+        .with(Panel::header("Stems type counts"))
+        .with(Panel::footer(format!("Total = {}", total_stems)))
+        .to_string();
 
         println!("{}\n", table);
     }
+
+    {
+        #[derive(Tabled)]
+        struct ContractStemRow {
+            name: &'static str,
+            average: u64,
+            median: u64,
+            p99: u64,
+            max: u64,
+        }
+        let stats = calculate_stats(
+            &mut stem_stats
+                .iter()
+                .map(|a| a.account_stem)
+                .collect::<Vec<_>>(),
+        );
+        let table = Table::new([ContractStemRow {
+            name: "Contract header stems",
+            average: stats.average,
+            median: stats.median,
+            p99: stats.p99,
+            max: stats.max,
+        }])
+        .with(Panel::header("Stems type counts"))
+        .to_string();
+
+        println!("{}\n", table);
+    }
+
+    // {
+    //     #[derive(Tabled)]
+    //     struct StorageSlotsStemRow {
+    //         name: &'static str,
+    //         total: u64,
+    //     }
+
+    //     let table = Table::new([StorageSlotsStemRow {
+    //         name: "Accounts storage-slot stems",
+    //         total: stem_stats.len() as u64,
+    //         stats: calculate_stats(
+    //             &mut stem_stats
+    //                 .iter()
+    //                 .map(|a| a.account_stem)
+    //                 .collect::<Vec<_>>(),
+    //         ),
+    //     }]);
+    // }
 
     Ok(())
 }
@@ -107,14 +181,17 @@ pub struct Stats {
     max: u64,
 }
 
-fn calculate_stats(data: &mut [u64]) -> Stats {
+fn calculate_stats<T>(data: &mut [T]) -> Stats
+where
+    T: Copy + Into<u64> + Ord,
+{
     data.sort();
     let count = data.len() as u64;
-    let average = data.iter().sum::<u64>() / count;
-    let median = data[count as usize / 2];
-    let p99 = data[(count as f64 * 0.99) as usize];
-    let max = *data.last().unwrap_or(&0);
-    let sum = data.iter().sum();
+    let sum: u64 = data.iter().map(|&x| x.into()).sum();
+    let average = sum / count;
+    let median = data[count as usize / 2].into();
+    let p99 = data[(count as f64 * 0.99) as usize].into();
+    let max = data.last().map_or(0, |&x| x.into());
 
     Stats {
         sum,

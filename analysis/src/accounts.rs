@@ -12,8 +12,6 @@ use serde::{Deserialize, Serialize};
 use std::cmp::min;
 use tabled::Tabled;
 
-use crate::main;
-
 static PROGRESS_STYLE: LazyLock<ProgressStyle> = LazyLock::new(|| {
     ProgressStyle::with_template("{bar:50.cyan/blue} {percent}% [eta: {eta}] {msg}")
         .expect("Failed to set progress bar style template")
@@ -110,7 +108,8 @@ pub fn stem_stats(tx: &Tx<RO>, group_size: u16) -> Result<Vec<AccountStemStats>>
                         account_stem: 1 + 1 + code_chunks_in_header, // BASIC_DATA + CODE_HASH + header_code_chunks
                         ss_count: 0,
                         ss_stems: vec![],
-                        code_stems: code_chunks_count - code_chunks_in_header,
+                        code_stems: (code_chunks_count - code_chunks_in_header)
+                            .div_ceil(group_size),
                     });
                 }
                 let contract = contracts.last_mut().unwrap();
