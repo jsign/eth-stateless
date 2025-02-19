@@ -50,32 +50,59 @@ fn main() -> Result<()> {
 }
 
 fn account_stats(tx: Tx<RO>) -> Result<()> {
-    #[derive(Tabled)]
-    struct AccountCounts {
-        eoas: u64,
-        contracts: u64,
-        total: u64,
-    }
+    let accounts_data = accounts::account_stats(&tx)?;
+    {
+        #[derive(Tabled)]
+        struct AccountCounts {
+            eoas: u64,
+            contracts: u64,
+            total: u64,
+        }
 
-    let data = accounts::account_stats(&tx)?;
-
-    let table = Table::new(vec![AccountCounts {
-        eoas: data.0,
-        contracts: data.1,
-        total: data.0 + data.1,
-    }])
-    .with(Style::markdown())
-    .with(Panel::header("Account type counts"))
-    .to_string();
-
-    println!("{}\n", table);
-
-    let table = Table::new(vec![data.2])
+        let table = Table::new(vec![AccountCounts {
+            eoas: accounts_data.0,
+            contracts: accounts_data.1,
+            total: accounts_data.0 + accounts_data.1,
+        }])
         .with(Style::markdown())
-        .with(Panel::header("Code length stats"))
+        .with(Panel::header("Accounts"))
         .to_string();
 
-    println!("{}", table);
+        println!("{}\n", table);
+    }
+
+    {
+        let table = Table::new(vec![accounts_data.2])
+            .with(Style::markdown())
+            .with(Panel::header("Contracts code-length"))
+            .to_string();
+
+        println!("{}\n", table);
+    }
+
+    let storage_slots_data = accounts::storage_slots_stats(&tx)?;
+    #[derive(Tabled)]
+    struct StorageSlotStats {
+        total: u64,
+        average: u64,
+        median: u64,
+        p99: u64,
+        max: u64,
+    }
+    {
+        let table = Table::new(vec![StorageSlotStats {
+            total: storage_slots_data.0,
+            average: storage_slots_data.1.average,
+            median: storage_slots_data.1.median,
+            p99: storage_slots_data.1.p99,
+            max: storage_slots_data.1.max,
+        }])
+        .with(Style::markdown())
+        .with(Panel::header("Storage Slots stats"))
+        .to_string();
+
+        println!("{}\n", table);
+    }
 
     Ok(())
 }
