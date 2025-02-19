@@ -1,6 +1,6 @@
 use std::sync::LazyLock;
 
-use alloy_primitives::b256;
+use alloy_primitives::{b256, Address};
 use anyhow::Result;
 use indicatif::{ProgressBar, ProgressStyle};
 use reth_db::mdbx::tx::Tx;
@@ -66,33 +66,31 @@ pub fn account_stats(tx: &Tx<RO>) -> Result<(u64, u64, Stats)> {
     Ok((eoa_count, contract_count, calculate_stats(&mut code_lens)))
 }
 
-pub fn storage_slots_stats(tx: &Tx<RO>) -> Result<(u64, Stats)> {
+pub struct AccountStorage {
+    pub address: Address,
+    pub total_slots: u64,
+}
+
+pub fn storage_slots_stats(tx: &Tx<RO>) -> Result<Vec<AccountStorage>> {
     let bar = ProgressBar::new(tx.entries::<PlainStorageState>()? as u64)
         .with_style(PROGRESS_STYLE.clone())
         .with_message("Analyzing storage slots...");
 
-    let mut contracts_ss_count = Vec::<u64>::new();
-    let mut current_addr = None;
-    let mut curr_count = 0;
+    let mut contracts = Vec::<AccountStorage>::new();
     let mut cur = tx.cursor_read::<PlainStorageState>()?;
     loop {
         match cur.next() {
             Ok(Some((address, _))) => {
-                bar.inc(1);
-                match current_addr {
-                    Some(curr_addr) if curr_addr != address => {
-                        contracts_ss_count.push(curr_count);
-                        current_addr = Some(address);
-                        curr_count = 1;
-                    }
-                    Some(_) => {
-                        curr_count += 1;
-                    }
-                    None => {
-                        current_addr = Some(address);
-                        curr_count = 1;
-                    }
+                if contracts.is_empty() || address != contracts.last().unwrap().address {
+                    contracts.push(AccountStorage {
+                        address,
+                        total_slots: 0,
+                    });
                 }
+                let contract = contracts.last_mut().unwrap();
+                contract.total_slots += 1;
+
+                bar.inc(1);
             }
             Ok(None) => {
                 break;
@@ -102,15 +100,9 @@ pub fn storage_slots_stats(tx: &Tx<RO>) -> Result<(u64, Stats)> {
             }
         }
     }
-    if current_addr.is_some() {
-        contracts_ss_count.push(curr_count);
-    }
     bar.finish_and_clear();
 
-    Ok((
-        contracts_ss_count.iter().sum::<u64>(),
-        calculate_stats(&mut contracts_ss_count),
-    ))
+    Ok(contracts)
 }
 
 fn calculate_stats(data: &mut [u64]) -> Stats {

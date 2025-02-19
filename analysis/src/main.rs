@@ -81,28 +81,46 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
     }
 
     let storage_slots_data = accounts::storage_slots_stats(&tx)?;
-    #[derive(Tabled)]
-    struct StorageSlotStats {
-        total: u64,
-        average: u64,
-        median: u64,
-        p99: u64,
-        max: u64,
-    }
     {
-        let table = Table::new(vec![StorageSlotStats {
-            total: storage_slots_data.0,
-            average: storage_slots_data.1.average,
-            median: storage_slots_data.1.median,
-            p99: storage_slots_data.1.p99,
-            max: storage_slots_data.1.max,
-        }])
-        .with(Style::markdown())
-        .with(Panel::header("Storage Slots stats"))
-        .to_string();
+        let mut ss_counts = storage_slots_data
+            .iter()
+            .map(|a| a.total_slots)
+            .collect::<Vec<_>>();
+
+        let table = Table::new(vec![calculate_stats(&mut ss_counts)])
+            .with(Style::markdown())
+            .with(Panel::header("Storage Slots stats"))
+            .to_string();
 
         println!("{}\n", table);
     }
 
     Ok(())
+}
+
+#[derive(Debug, Tabled)]
+pub struct Stats {
+    sum: u64,
+    average: u64,
+    median: u64,
+    p99: u64,
+    max: u64,
+}
+
+fn calculate_stats(data: &mut [u64]) -> Stats {
+    data.sort();
+    let count = data.len() as u64;
+    let average = data.iter().sum::<u64>() / count;
+    let median = data[count as usize / 2];
+    let p99 = data[(count as f64 * 0.99) as usize];
+    let max = *data.last().unwrap_or(&0);
+    let sum = data.iter().sum();
+
+    Stats {
+        sum,
+        average,
+        median,
+        p99,
+        max,
+    }
 }
