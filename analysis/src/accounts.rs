@@ -27,7 +27,7 @@ pub struct AccountStemStats {
 }
 
 pub fn account_stats(tx: &Tx<RO>, group_size: u16) -> Result<Vec<AccountStemStats>> {
-    let bar = ProgressBar::new(tx.entries::<PlainStorageState>()? as u64)
+    let bar = ProgressBar::new(tx.entries::<PlainAccountState>()? as u64)
         .with_style(PROGRESS_STYLE.clone())
         .with_message("Analyzing...");
 

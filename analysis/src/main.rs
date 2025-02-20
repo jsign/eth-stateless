@@ -93,7 +93,7 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
         let code_chunks_stems = stats.iter().map(|a| a.code_stems as u64).sum();
         let table = Table::new([
             StemCountRow {
-                name: "Contract header stems",
+                name: "Accounts header stems",
                 total: contract_header_stems,
                 percentage: contract_header_stems as f64 / total_stems as f64 * 100.0,
             },
@@ -124,38 +124,53 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
             p99: u64,
             max: u64,
         }
-        let stats = calculate_stats(&mut stats.iter().map(|a| a.account_stem).collect::<Vec<_>>());
-        let table = Table::new([ContractStemRow {
-            name: "Contract header stems",
-            average: stats.average,
-            median: stats.median,
-            p99: stats.p99,
-            max: stats.max,
-        }])
+        let account_stats =
+            calculate_stats(&mut stats.iter().map(|a| a.account_stem).collect::<Vec<_>>());
+        let ss_stats = calculate_stats(
+            &mut stats
+                .iter()
+                .flat_map(|a| a.ss_stems.clone())
+                .collect::<Vec<_>>(),
+        );
+
+        let table = Table::new([
+            ContractStemRow {
+                name: "Contract header stems",
+                average: account_stats.average,
+                median: account_stats.median,
+                p99: account_stats.p99,
+                max: account_stats.max,
+            },
+            ContractStemRow {
+                name: "Storage slots stems",
+                average: ss_stats.average,
+                median: ss_stats.median,
+                p99: ss_stats.p99,
+                max: ss_stats.max,
+            },
+        ])
         .with(Panel::header("Stems type counts"))
         .to_string();
 
         println!("{}\n", table);
     }
 
-    // {
-    //     #[derive(Tabled)]
-    //     struct StorageSlotsStemRow {
-    //         name: &'static str,
-    //         total: u64,
-    //     }
+    {
+        #[derive(Tabled)]
+        struct SingleSlotStem {
+            single_slot_stems: usize,
+        }
+        let table = Table::new([SingleSlotStem {
+            single_slot_stems: stats
+                .iter()
+                .map(|a| a.ss_stems.iter().filter(|s| **s == 1).count())
+                .sum(),
+        }])
+        .with(Panel::header("Single-slot stems"))
+        .to_string();
 
-    //     let table = Table::new([StorageSlotsStemRow {
-    //         name: "Accounts storage-slot stems",
-    //         total: stem_stats.len() as u64,
-    //         stats: calculate_stats(
-    //             &mut stem_stats
-    //                 .iter()
-    //                 .map(|a| a.account_stem)
-    //                 .collect::<Vec<_>>(),
-    //         ),
-    //     }]);
-    // }
+        println!("{}\n", table);
+    }
 
     Ok(())
 }
