@@ -67,9 +67,13 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
     }
 
     {
-        let mut code_lens: Vec<u64> = stats.iter().map(|a| a.bytecode_len as u64).collect();
+        let mut code_lens: Vec<u64> = stats
+            .iter()
+            .filter(|a| a.bytecode_len > 0)
+            .map(|a| a.bytecode_len as u64)
+            .collect();
         let table = Table::new(vec![calculate_stats(&mut code_lens)])
-            .with(Panel::header("Code lengths"))
+            .with(Panel::header("Code length"))
             .to_string();
 
         println!("{}\n", table);
