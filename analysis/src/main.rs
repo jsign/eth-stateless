@@ -1,15 +1,8 @@
-use std::{
-    io::{BufWriter, Write},
-    path::Path,
-};
-
 use anyhow::Result;
 use clap::Parser;
 use reth_db::mdbx::{tx::Tx, DatabaseArguments, RO};
-use tabled::{
-    settings::{Panel, Style},
-    Table, Tabled,
-};
+use std::path::Path;
+use tabled::{settings::Panel, Table, Tabled};
 
 mod accounts;
 
@@ -53,19 +46,19 @@ fn main() -> Result<()> {
 }
 
 fn account_stats(tx: Tx<RO>) -> Result<()> {
-    let accounts_data = accounts::account_stats(&tx)?;
+    let stats = accounts::account_stats(&tx, 256)?;
     {
         #[derive(Tabled)]
         struct AccountCounts {
-            eoas: u64,
-            contracts: u64,
-            total: u64,
+            eoas: usize,
+            contracts: usize,
+            total: usize,
         }
-
+        let eoa_count = stats.iter().filter(|a| a.bytecode_len == 0).count();
         let table = Table::new(vec![AccountCounts {
-            eoas: accounts_data.0,
-            contracts: accounts_data.1,
-            total: accounts_data.0 + accounts_data.1,
+            eoas: eoa_count,
+            contracts: stats.len() - eoa_count,
+            total: stats.len(),
         }])
         .with(Panel::header("Accounts"))
         .to_string();
@@ -74,16 +67,16 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
     }
 
     {
-        let table = Table::new(vec![accounts_data.2])
+        let mut code_lens: Vec<u64> = stats.iter().map(|a| a.bytecode_len as u64).collect();
+        let table = Table::new(vec![calculate_stats(&mut code_lens)])
             .with(Panel::header("Code lengths"))
             .to_string();
 
         println!("{}\n", table);
     }
 
-    let stem_stats = accounts::stem_stats(&tx, 256)?;
     {
-        let total_stems = stem_stats
+        let total_stems = stats
             .iter()
             .map(|a| 1 + a.ss_stems.len() + a.code_stems as usize)
             .sum::<usize>();
@@ -95,9 +88,9 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
             #[tabled(rename = "%", format = "{:.2}%")]
             percentage: f64,
         }
-        let contract_header_stems = stem_stats.len() as u64;
-        let storage_slots_stems = stem_stats.iter().map(|a| a.ss_stems.len() as u64).sum();
-        let code_chunks_stems = stem_stats.iter().map(|a| a.code_stems as u64).sum();
+        let contract_header_stems = stats.len() as u64;
+        let storage_slots_stems = stats.iter().map(|a| a.ss_stems.len() as u64).sum();
+        let code_chunks_stems = stats.iter().map(|a| a.code_stems as u64).sum();
         let table = Table::new([
             StemCountRow {
                 name: "Contract header stems",
@@ -131,12 +124,7 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
             p99: u64,
             max: u64,
         }
-        let stats = calculate_stats(
-            &mut stem_stats
-                .iter()
-                .map(|a| a.account_stem)
-                .collect::<Vec<_>>(),
-        );
+        let stats = calculate_stats(&mut stats.iter().map(|a| a.account_stem).collect::<Vec<_>>());
         let table = Table::new([ContractStemRow {
             name: "Contract header stems",
             average: stats.average,
