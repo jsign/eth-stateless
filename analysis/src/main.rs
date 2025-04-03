@@ -181,10 +181,7 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
     {
         #[derive(Tabled)]
         struct SingleSlotStem {
-            #[tabled(
-                rename = "Storage-slots stems with single non-zero value",
-                format = "{:.2}%"
-            )]
+            #[tabled(rename = "Storage-slot stems with single non-zero values")]
             single_slot_stems: usize,
         }
         let table = Table::new([SingleSlotStem {
