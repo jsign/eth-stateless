@@ -1,7 +1,15 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
-use reth_db::mdbx::{tx::Tx, DatabaseArguments, RO};
-use std::path::Path;
+use reth_chainspec::ChainSpecBuilder;
+use reth_db::{
+    mdbx::{tx::Tx, DatabaseArguments, MaxReadTransactionDuration, RO},
+    DatabaseEnv,
+};
+use reth_node_ethereum::EthereumNode;
+use reth_node_types::NodeTypesWithDBAdapter;
+use reth_provider::{providers::StaticFileProvider, ProviderFactory, StageCheckpointReader};
+use reth_stages::StageId;
+use std::{path::Path, sync::Arc};
 use tabled::{settings::Panel, Table, Tabled};
 
 mod accounts;
@@ -24,19 +32,30 @@ enum SubCommand {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let datadir = Path::new(&cli.datadir);
 
-    let tx = {
-        let db = reth_db::open_db_read_only(
-            datadir.join("db").as_path(),
-            DatabaseArguments::default().with_max_read_transaction_duration(Some(
-                reth_db::mdbx::MaxReadTransactionDuration::Unbounded,
-            )),
-        )
-        .unwrap();
-        let tx = db.begin_ro_txn().unwrap();
-        Tx::new(tx)
-    };
+    let db_path = Path::new(&cli.datadir).join("db");
+    let db = reth_db::open_db_read_only(
+        db_path.as_ref(),
+        DatabaseArguments::default()
+            .with_max_read_transaction_duration(Some(MaxReadTransactionDuration::Unbounded)),
+    )
+    .map_err(|err| anyhow!(err))?;
+
+    let spec = ChainSpecBuilder::mainnet().build();
+    let factory = ProviderFactory::<NodeTypesWithDBAdapter<EthereumNode, Arc<DatabaseEnv>>>::new(
+        db.into(),
+        spec.into(),
+        StaticFileProvider::read_only(db_path.join("static_files"), true)?,
+    );
+    let provider = factory.provider()?;
+
+    let latest_block_number = provider
+        .get_stage_checkpoint(StageId::Finish)?
+        .map(|ch| ch.block_number)
+        .ok_or(anyhow!("No finish checkpoint"))?;
+    println!("Database block number: {:?}", latest_block_number);
+
+    let tx = provider.into_tx();
 
     match cli.subcmd {
         SubCommand::AccountsStats => account_stats(tx)?,
@@ -139,7 +158,7 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
 
         let table = Table::new([
             ContractStemRow {
-                name: "Contract header stems",
+                name: "Accounts header stems",
                 average: account_stats.average,
                 median: account_stats.median,
                 p99: account_stats.p99,
@@ -153,7 +172,7 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
                 max: ss_stats.max,
             },
         ])
-        .with(Panel::header("Stems type counts"))
+        .with(Panel::header("Stems non-zero values count distribution"))
         .to_string();
 
         println!("{}\n", table);
@@ -162,6 +181,10 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
     {
         #[derive(Tabled)]
         struct SingleSlotStem {
+            #[tabled(
+                rename = "Storage-slots stems with single non-zero value",
+                format = "{:.2}%"
+            )]
             single_slot_stems: usize,
         }
         let table = Table::new([SingleSlotStem {
@@ -170,7 +193,7 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
                 .map(|a| a.ss_stems.iter().filter(|s| **s == 1).count())
                 .sum(),
         }])
-        .with(Panel::header("Single-slot stems"))
+        // .with(Panel::header("Single-slot stems"))
         .to_string();
 
         println!("{}\n", table);
