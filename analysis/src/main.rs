@@ -99,6 +99,19 @@ fn account_stats(tx: Tx<RO>) -> Result<()> {
     }
 
     {
+        let mut num_storage_slots: Vec<u64> = stats
+            .iter()
+            .filter(|a| a.bytecode_len > 0)
+            .map(|a| a.num_storage_slots as u64)
+            .collect();
+        let table = Table::new(vec![calculate_stats(&mut num_storage_slots)])
+            .with(Panel::header("Contract storage slots count"))
+            .to_string();
+
+        println!("{}\n", table);
+    }
+
+    {
         let total_stems = stats
             .iter()
             .map(|a| 1 + a.ss_stems.len() + a.code_stems as usize)

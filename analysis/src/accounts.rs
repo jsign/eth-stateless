@@ -24,6 +24,7 @@ pub struct AccountStemStats {
     pub account_stem: u16,
     pub ss_stems: Vec<u16>,
     pub code_stems: u16,
+    pub num_storage_slots: usize,
 }
 
 pub fn account_stats(tx: &Tx<RO>, group_size: u16) -> Result<Vec<AccountStemStats>> {
@@ -55,6 +56,7 @@ pub fn account_stats(tx: &Tx<RO>, group_size: u16) -> Result<Vec<AccountStemStat
                     account_stem: 1 + 1 + code_chunks_in_header, // BASIC_DATA + CODE_HASH + header_code_chunks
                     ss_stems: vec![],
                     code_stems: (code_chunks_count - code_chunks_in_header).div_ceil(group_size),
+                    num_storage_slots: 0,
                 };
 
                 let mut cur = tx.cursor_read::<PlainStorageState>()?;
@@ -64,6 +66,7 @@ pub fn account_stats(tx: &Tx<RO>, group_size: u16) -> Result<Vec<AccountStemStat
                     if slot_address != address {
                         break;
                     }
+                    stats.num_storage_slots += 1;
                     if slot.key < ss_header_count {
                         stats.account_stem += 1;
                     } else {
